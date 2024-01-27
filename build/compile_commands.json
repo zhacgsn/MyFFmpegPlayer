@@ -1,0 +1,62 @@
+[
+{
+  "directory": "/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/build",
+  "command": "/usr/bin/clang++ -I/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/. -I/opt/homebrew/Cellar/ffmpeg/6.0_1/include -I/Users/zhacgsn/dev/SDL2-2.28.5/include -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.3.sdk -fsanitize=address -fno-omit-frame-pointer -g -O2 -Wall -D_REENTRANT -fPIC -std=gnu++17 -o CMakeFiles/MyFFmpegPlayer.dir/AudioDecodeThread.cc.o -c /Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/AudioDecodeThread.cc",
+  "file": "/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/AudioDecodeThread.cc"
+},
+{
+  "directory": "/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/build",
+  "command": "/usr/bin/clang++ -I/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/. -I/opt/homebrew/Cellar/ffmpeg/6.0_1/include -I/Users/zhacgsn/dev/SDL2-2.28.5/include -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.3.sdk -fsanitize=address -fno-omit-frame-pointer -g -O2 -Wall -D_REENTRANT -fPIC -std=gnu++17 -o CMakeFiles/MyFFmpegPlayer.dir/AudioPlay.cc.o -c /Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/AudioPlay.cc",
+  "file": "/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/AudioPlay.cc"
+},
+{
+  "directory": "/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/build",
+  "command": "/usr/bin/clang++ -I/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/. -I/opt/homebrew/Cellar/ffmpeg/6.0_1/include -I/Users/zhacgsn/dev/SDL2-2.28.5/include -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.3.sdk -fsanitize=address -fno-omit-frame-pointer -g -O2 -Wall -D_REENTRANT -fPIC -std=gnu++17 -o CMakeFiles/MyFFmpegPlayer.dir/DemuxThread.cc.o -c /Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/DemuxThread.cc",
+  "file": "/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/DemuxThread.cc"
+},
+{
+  "directory": "/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/build",
+  "command": "/usr/bin/clang++ -I/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/. -I/opt/homebrew/Cellar/ffmpeg/6.0_1/include -I/Users/zhacgsn/dev/SDL2-2.28.5/include -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.3.sdk -fsanitize=address -fno-omit-frame-pointer -g -O2 -Wall -D_REENTRANT -fPIC -std=gnu++17 -o CMakeFiles/MyFFmpegPlayer.dir/FFmpegPlayer.cc.o -c /Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/FFmpegPlayer.cc",
+  "file": "/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/FFmpegPlayer.cc"
+},
+{
+  "directory": "/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/build",
+  "command": "/usr/bin/clang++ -I/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/. -I/opt/homebrew/Cellar/ffmpeg/6.0_1/include -I/Users/zhacgsn/dev/SDL2-2.28.5/include -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.3.sdk -fsanitize=address -fno-omit-frame-pointer -g -O2 -Wall -D_REENTRANT -fPIC -std=gnu++17 -o CMakeFiles/MyFFmpegPlayer.dir/Log.cc.o -c /Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/Log.cc",
+  "file": "/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/Log.cc"
+},
+{
+  "directory": "/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/build",
+  "command": "/usr/bin/clang++ -I/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/. -I/opt/homebrew/Cellar/ffmpeg/6.0_1/include -I/Users/zhacgsn/dev/SDL2-2.28.5/include -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.3.sdk -fsanitize=address -fno-omit-frame-pointer -g -O2 -Wall -D_REENTRANT -fPIC -std=gnu++17 -o CMakeFiles/MyFFmpegPlayer.dir/main.cc.o -c /Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/main.cc",
+  "file": "/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/main.cc"
+},
+{
+  "directory": "/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/build",
+  "command": "/usr/bin/clang++ -I/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/. -I/opt/homebrew/Cellar/ffmpeg/6.0_1/include -I/Users/zhacgsn/dev/SDL2-2.28.5/include -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.3.sdk -fsanitize=address -fno-omit-frame-pointer -g -O2 -Wall -D_REENTRANT -fPIC -std=gnu++17 -o CMakeFiles/MyFFmpegPlayer.dir/PacketQueue.cc.o -c /Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/PacketQueue.cc",
+  "file": "/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/PacketQueue.cc"
+},
+{
+  "directory": "/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/build",
+  "command": "/usr/bin/clang++ -I/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/. -I/opt/homebrew/Cellar/ffmpeg/6.0_1/include -I/Users/zhacgsn/dev/SDL2-2.28.5/include -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.3.sdk -fsanitize=address -fno-omit-frame-pointer -g -O2 -Wall -D_REENTRANT -fPIC -std=gnu++17 -o CMakeFiles/MyFFmpegPlayer.dir/RenderView.cc.o -c /Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/RenderView.cc",
+  "file": "/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/RenderView.cc"
+},
+{
+  "directory": "/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/build",
+  "command": "/usr/bin/clang++ -I/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/. -I/opt/homebrew/Cellar/ffmpeg/6.0_1/include -I/Users/zhacgsn/dev/SDL2-2.28.5/include -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.3.sdk -fsanitize=address -fno-omit-frame-pointer -g -O2 -Wall -D_REENTRANT -fPIC -std=gnu++17 -o CMakeFiles/MyFFmpegPlayer.dir/SDLApp.cc.o -c /Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/SDLApp.cc",
+  "file": "/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/SDLApp.cc"
+},
+{
+  "directory": "/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/build",
+  "command": "/usr/bin/clang++ -I/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/. -I/opt/homebrew/Cellar/ffmpeg/6.0_1/include -I/Users/zhacgsn/dev/SDL2-2.28.5/include -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.3.sdk -fsanitize=address -fno-omit-frame-pointer -g -O2 -Wall -D_REENTRANT -fPIC -std=gnu++17 -o CMakeFiles/MyFFmpegPlayer.dir/ThreadBase.cc.o -c /Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/ThreadBase.cc",
+  "file": "/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/ThreadBase.cc"
+},
+{
+  "directory": "/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/build",
+  "command": "/usr/bin/clang++ -I/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/. -I/opt/homebrew/Cellar/ffmpeg/6.0_1/include -I/Users/zhacgsn/dev/SDL2-2.28.5/include -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.3.sdk -fsanitize=address -fno-omit-frame-pointer -g -O2 -Wall -D_REENTRANT -fPIC -std=gnu++17 -o CMakeFiles/MyFFmpegPlayer.dir/Timer.cc.o -c /Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/Timer.cc",
+  "file": "/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/Timer.cc"
+},
+{
+  "directory": "/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/build",
+  "command": "/usr/bin/clang++ -I/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/. -I/opt/homebrew/Cellar/ffmpeg/6.0_1/include -I/Users/zhacgsn/dev/SDL2-2.28.5/include -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.3.sdk -fsanitize=address -fno-omit-frame-pointer -g -O2 -Wall -D_REENTRANT -fPIC -std=gnu++17 -o CMakeFiles/MyFFmpegPlayer.dir/VideoDecodeThread.cc.o -c /Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/VideoDecodeThread.cc",
+  "file": "/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/VideoDecodeThread.cc"
+}
+]

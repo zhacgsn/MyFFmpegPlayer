@@ -1,0 +1,3 @@
+/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/build/CMakeFiles/MyFFmpegPlayer.dir
+/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/build/CMakeFiles/edit_cache.dir
+/Users/zhacgsn/dev/video_audio/MyFFmpegPlayer/build/CMakeFiles/rebuild_cache.dir
