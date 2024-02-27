@@ -18,13 +18,14 @@
 #include <_types/_uint8_t.h>
 #include <cmath>
 #include <iostream>
+#include <memory>
 #include <sys/_types/_int64_t.h>
 #include <sys/_types/_size_t.h>
 
 namespace myffmpegplayer {
 
 // 返回音频当前播放时间 (pts, presentation timestamp)
-static double GetAudioClock(FFmpegPlayerContext *player_ctx) {
+static auto GetAudioClock(FFmpegPlayerContext *player_ctx) -> double {
   double pts{player_ctx->audio_clock_};
   size_t hw_buf_size{player_ctx->audio_buf_size_ -
                      player_ctx->audio_buf_index_};
@@ -43,10 +44,11 @@ static double GetAudioClock(FFmpegPlayerContext *player_ctx) {
   return pts;
 }
 
-static uint32_t SDLRefreshTimerCallback(uint32_t /*interval*/, void *opaque) {
+static auto SDLRefreshTimerCallback(uint32_t /*interval*/, void *param)
+    -> uint32_t {
   SDL_Event event;
   event.type = kFFRefreshEvent;
-  event.user.data1 = opaque;
+  event.user.data1 = param;
   SDL_PushEvent(&event);
 
   // If the callback returns 0, the periodic alarm is cancelled
@@ -85,9 +87,37 @@ void StreamSeek(FFmpegPlayerContext *player_ctx, int64_t pos, int rel) {
   }
 }
 
-FFmpegPlayer::FFmpegPlayer() {
-  std::cout << "In FFmpegPlayer constructor..." << '\n';
+FFmpegPlayerContext::FFmpegPlayerContext()
+    : audio_frame_(av_frame_alloc()), audio_pkt_(av_packet_alloc()),
+      pict_queue_mutex_(SDL_CreateMutex()), pict_queue_cond_(SDL_CreateCond()) {
 }
+
+FFmpegPlayerContext::~FFmpegPlayerContext() { CleanUp(); }
+
+void FFmpegPlayerContext::Finit() { CleanUp(); }
+
+void FFmpegPlayerContext::CleanUp() {
+  if (!stopped_) {
+    if (audio_frame_) {
+      av_frame_free(&audio_frame_);
+    }
+    if (audio_pkt_) {
+      av_packet_free(&audio_pkt_);
+    }
+    if (pict_queue_mutex_) {
+      SDL_DestroyMutex(pict_queue_mutex_);
+    }
+    if (pict_queue_cond_) {
+      SDL_DestroyCond(pict_queue_cond_);
+    }
+    stopped_ = true;
+  }
+}
+
+FFmpegPlayer::FFmpegPlayer()
+    : player_ctx_(std::make_shared<FFmpegPlayerContext>()),
+      demux_thread_(player_ctx_), audio_decode_thread_(player_ctx_),
+      video_decode_thread_(player_ctx_) {}
 
 void FFmpegPlayer::SetFilePath(const char *file_path) {
   file_path_ = file_path;
@@ -95,30 +125,18 @@ void FFmpegPlayer::SetFilePath(const char *file_path) {
 
 void FFmpegPlayer::SetImageCallback(ImageCallback image_callback,
                                     void *user_data) {
-  player_ctx_.image_callback_ = image_callback;
-  player_ctx_.cb_data_ = user_data;
+  player_ctx_->image_callback_ = image_callback;
+  // RenderPairData
+  player_ctx_->cb_data_ = user_data;
 }
 
-int FFmpegPlayer::InitPlayer() {
-  player_ctx_.Init();
-  player_ctx_.filename_ = file_path_;
+auto FFmpegPlayer::InitPlayer() -> int {
+  player_ctx_->filename_ = file_path_;
 
-  // 创建解封装线程
-  demux_thread_ = new DemuxThread;
-  demux_thread_->SetPlayerCtx(&player_ctx_);
-
-  if (demux_thread_->InitDemuxThread() != 0) {
+  if (demux_thread_.InitDemuxThread() != 0) {
     std::cerr << "DemuxThread init failed!" << '\n';
     return -1;
   }
-
-  // 创建音频解码线程
-  audio_decode_thread_ = new AudioDecodeThread;
-  audio_decode_thread_->SetPlayerCtx(&player_ctx_);
-
-  // 创建视频解码线程
-  video_decode_thread_ = new VideoDecodeThread;
-  video_decode_thread_->SetPlayerCtx(&player_ctx_);
 
   // render audio params
   audio_desired_spec_.freq = 48000;
@@ -126,22 +144,21 @@ int FFmpegPlayer::InitPlayer() {
   audio_desired_spec_.channels = 2;
   audio_desired_spec_.silence = 0;
   audio_desired_spec_.samples = kSDLAudioBufferSize;
-  // ?
   // callback that feeds the audio device
   audio_desired_spec_.callback = FNAudioCallback;
-  audio_desired_spec_.userdata = audio_decode_thread_;
+  audio_desired_spec_.userdata = &audio_decode_thread_;
 
-  // 创建音频播放设备
-  audio_play_ = new AudioPlay;
-
-  if (audio_play_->OpenDevice(&audio_desired_spec_) <= 0) {
+  // 打开音频播放设备
+  if (audio_play_.OpenDevice(&audio_desired_spec_) <= 0) {
     std::cerr << "Could not open audio device!" << '\n';
     return -1;
   }
 
-  auto refresh_event = [this](SDL_Event *event) { OnRefreshEvent(event); };
+  auto refresh_event = [this](SDL_Event *event) -> void {
+    OnRefreshEvent(event);
+  };
 
-  auto key_event = [this](SDL_Event *event) { OnKeyEvent(event); };
+  auto key_event = [this](SDL_Event *event) -> void { OnKeyEvent(event); };
 
   SDLApp::Instance()->RegisterEvent(kFFRefreshEvent, refresh_event);
   SDLApp::Instance()->RegisterEvent(SDL_KEYDOWN, key_event);
@@ -150,73 +167,25 @@ int FFmpegPlayer::InitPlayer() {
 }
 
 void FFmpegPlayer::Start() {
-  demux_thread_->Start();
-  video_decode_thread_->Start();
-  audio_decode_thread_->Start();
-  audio_play_->Start();
+  demux_thread_.Start();
+  video_decode_thread_.Start();
+  audio_decode_thread_.Start();
+  audio_play_.Start();
 
-  ScheduleRefresh(&player_ctx_, 40);
+  ScheduleRefresh(player_ctx_.get(), 40);
 
   stop_ = false;
 }
 
-// #define FREE(x)
-//   delete x;
-//   x = nullptr
+FFmpegPlayer::~FFmpegPlayer() { CleanUp(); }
 
-void FFmpegPlayer::Stop() {
-  stop_ = true;
-
-  // 停止音频解码
-  std::cout << "Audio decode thread cleaning..." << '\n';
-
-  if (audio_decode_thread_) {
-    audio_decode_thread_->Stop();
-    delete audio_decode_thread_;
-    audio_decode_thread_ = nullptr;
-  }
-  std::cout << "Audio decode thead finished." << '\n';
-
-  // 停止音频线程
-  std::cout << "Audio play thread cleaning..." << '\n';
-
-  if (audio_play_) {
-    audio_play_->Stop();
-    delete audio_play_;
-    audio_play_ = nullptr;
-  }
-  std::cout << "Audio play thread finished." << '\n';
-
-  // 停止视频解码线程
-  std::cout << "Video decode thread cleaning..." << '\n';
-
-  if (video_decode_thread_) {
-    video_decode_thread_->Stop();
-    delete video_decode_thread_;
-    video_decode_thread_ = nullptr;
-  }
-  std::cout << "Video decode thread finished." << '\n';
-
-  // 停止解封装线程
-  std::cout << "Demux thread cleaning..." << '\n';
-
-  if (demux_thread_) {
-    demux_thread_->Stop();
-    demux_thread_->FinitDemuxThread();
-    delete demux_thread_;
-    demux_thread_ = nullptr;
-  }
-  std::cout << "Demux thread finished." << '\n';
-
-  std::cout << "Player context cleaning..." << '\n';
-  player_ctx_.Finit();
-  std::cout << "Player context finished." << '\n';
-}
+// 不让析构函数直接调用 Stop()是因为，万一我想在 Stop()抛出异常呢？
+void FFmpegPlayer::Stop() { CleanUp(); }
 
 void FFmpegPlayer::Pause(PauseState pause_state) {
-  player_ctx_.pause_ = pause_state;
+  player_ctx_->pause_ = pause_state;
   // reset frame_timer when retoring pause state
-  player_ctx_.frame_timer_ = av_gettime() / 1000000.0;
+  player_ctx_->frame_timer_ = av_gettime() / 1000000.0;
 }
 
 void FFmpegPlayer::OnRefreshEvent(SDL_Event *event) {
@@ -232,17 +201,17 @@ void FFmpegPlayer::OnRefreshEvent(SDL_Event *event) {
     } else {
       VideoPicture *video_picture{
           &(player_ctx->picture_queue_[player_ctx->pict_queue_rindex_])};
-      double delay{video_picture->pts - player_ctx->frame_lase_pts_};
+      double delay{video_picture->pts_ - player_ctx->frame_lase_pts_};
 
       if (delay <= 0 || delay >= 1.0) {
         delay = player_ctx->frame_last_delay_;
       }
       // save for next time
       player_ctx->frame_last_delay_ = delay;
-      player_ctx->frame_lase_pts_ = video_picture->pts;
+      player_ctx->frame_lase_pts_ = video_picture->pts_;
 
       double ref_clock{GetAudioClock(player_ctx)};
-      double diff{video_picture->pts - ref_clock};
+      double diff{video_picture->pts_ - ref_clock};
 
       double sync_threshold{delay > kAVSyncThreshold ? delay
                                                      : kAVSyncThreshold};
@@ -279,34 +248,34 @@ void FFmpegPlayer::OnRefreshEvent(SDL_Event *event) {
 
 void FFmpegPlayer::OnKeyEvent(SDL_Event *event) {
   double incr;
-  double pos;
+  double factor;
 
   switch (event->key.keysym.sym) {
   case SDLK_UP:
-    incr = 60.0;
-    DoSeekOnKeyEvent(incr, pos);
+    factor = 1.1;
+    DoVolumeAdjustOnKeyEvent(factor);
     break;
   case SDLK_DOWN:
-    incr = -60.0;
-    DoSeekOnKeyEvent(incr, pos);
+    factor = 0.5;
+    DoVolumeAdjustOnKeyEvent(factor);
     break;
   case SDLK_LEFT:
     incr = -10.0;
-    DoSeekOnKeyEvent(incr, pos);
+    DoSeekOnKeyEvent(incr);
     break;
   case SDLK_RIGHT:
     incr = 10.0;
-    DoSeekOnKeyEvent(incr, pos);
+    DoSeekOnKeyEvent(incr);
     break;
   case SDLK_q:
-    std::cout << "Quiting..." << '\n';
+    // std::cout << "Quiting..." << '\n';
     Stop();
     SDLApp::Instance()->Quit();
     break;
   case SDLK_SPACE:
-    std::cout << "Pause" << '\n';
+    // std::cout << "Pause" << '\n';
 
-    if (player_ctx_.pause_ == PauseState::UNPAUSE_) {
+    if (player_ctx_->pause_ == PauseState::UNPAUSE_) {
       Pause(PauseState::PAUSE_);
     } else {
       Pause(PauseState::UNPAUSE_);
@@ -317,17 +286,31 @@ void FFmpegPlayer::OnKeyEvent(SDL_Event *event) {
   }
 }
 
-void FFmpegPlayer::DoSeekOnKeyEvent(double incr, double &pos) {
-  pos = GetAudioClock(&player_ctx_);
+void FFmpegPlayer::DoSeekOnKeyEvent(double incr) {
+  double pos{GetAudioClock(player_ctx_.get())};
   pos += incr;
 
   if (pos < 0) {
     pos = 0;
   }
-  std::cout << "Seek to " << pos << " v: " << GetAudioClock(&player_ctx_)
-            << " a: " << GetAudioClock(&player_ctx_) << '\n';
-  StreamSeek(&player_ctx_, static_cast<int64_t>(pos * AV_TIME_BASE),
+  // std::cout << "Seek to " << pos << " v: " << GetAudioClock(&player_ctx_)
+  // << " a: " << GetAudioClock(&player_ctx_) << '\n';
+  StreamSeek(player_ctx_.get(), static_cast<int64_t>(pos * AV_TIME_BASE),
              static_cast<int>(incr));
+}
+
+void FFmpegPlayer::DoVolumeAdjustOnKeyEvent(double factor) {
+  player_ctx_->factor_ *= factor;
+}
+
+void FFmpegPlayer::CleanUp() {
+  if (!stop_) {
+    // std::cout << "Player context cleaning..." << '\n';
+    player_ctx_->Finit();
+    // std::cout << "Player context finished." << '\n';
+
+    stop_ = true;
+  }
 }
 
 } // namespace myffmpegplayer

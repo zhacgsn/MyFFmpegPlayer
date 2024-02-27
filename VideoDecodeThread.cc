@@ -3,6 +3,8 @@
 #include "FFmpegPlayer.h"
 #include "SDL_mutex.h"
 #include "SDL_timer.h"
+
+extern "C" {
 #include "libavcodec/avcodec.h"
 #include "libavcodec/packet.h"
 #include "libavutil/avutil.h"
@@ -11,7 +13,7 @@
 #include "libavutil/pixfmt.h"
 #include "libavutil/rational.h"
 #include "libswscale/swscale.h"
-
+}
 #include <_types/_uint64_t.h>
 #include <_types/_uint8_t.h>
 #include <algorithm>
@@ -21,9 +23,9 @@ namespace myffmpegplayer {
 
 // ? 同步 pts和视频时钟？
 // 矫正 pts
-static double SynchronizeVideo(FFmpegPlayerContext *player_ctx,
-                               AVFrame *src_frame, double pts) {
-  std::cout << "In SynchronizeVideo" << '\n';
+static auto SynchronizeVideo(FFmpegPlayerContext *player_ctx,
+                             AVFrame *src_frame, double pts) -> double {
+  // std::cout << "In SynchronizeVideo" << '\n';
 
   if (pts != 0) {
     // 如果有 pts，将视频时钟设置为 pts
@@ -40,23 +42,19 @@ static double SynchronizeVideo(FFmpegPlayerContext *player_ctx,
   return pts;
 }
 
-VideoDecodeThread::VideoDecodeThread() {
-  std::cout << "In VideoDecodeThread constructor" << '\n';
-}
-
-void VideoDecodeThread::SetPlayerCtx(FFmpegPlayerContext *player_ctx) {
-  player_ctx_ = player_ctx;
-}
+VideoDecodeThread::VideoDecodeThread(
+    std::shared_ptr<FFmpegPlayerContext> player_ctx)
+    : player_ctx_(player_ctx) {}
 
 void VideoDecodeThread::Run() {
-  int ret = VideoEntry();
-  std::cout << "VideoDecodeThread finished, ret=" << ret << '\n';
+  VideoEntry();
+  // std::cout << "VideoDecodeThread finished, ret=" << ret << '\n';
 }
 
-int VideoDecodeThread::VideoEntry() {
-  FFmpegPlayerContext *player_ctx{player_ctx_};
+auto VideoDecodeThread::VideoEntry() -> int {
+  // FFmpegPlayerContext *player_ctx{player_ctx_};
   AVPacket *packet{av_packet_alloc()};
-  AVCodecContext *p_codec_ctx{player_ctx->video_codec_ctx_};
+  AVCodecContext *p_codec_ctx{player_ctx_->video_codec_ctx_};
 
   int ret{-1};
   double pts{0.0};
@@ -72,19 +70,19 @@ int VideoDecodeThread::VideoEntry() {
     if (stop_) {
       break;
     }
-    if (player_ctx->pause_ == PauseState::PAUSE_) {
+    if (player_ctx_->pause_ == PauseState::PAUSE_) {
       SDL_Delay(5);
       continue;
     }
-    if (player_ctx->flush_video_ctx_) {
-      std::cout << "av_codec_flush_buffers for seeking!" << '\n';
-      avcodec_flush_buffers(player_ctx->video_codec_ctx_);
-      player_ctx->flush_video_ctx_ = false;
+    if (player_ctx_->flush_video_ctx_) {
+      // std::cout << "av_codec_flush_buffers for seeking!" << '\n';
+      avcodec_flush_buffers(player_ctx_->video_codec_ctx_);
+      player_ctx_->flush_video_ctx_ = false;
       continue;
     }
     av_packet_unref(packet);
 
-    if (player_ctx->video_queue_.PacketGet(packet, stop_) < 0) {
+    if (player_ctx_->video_queue_.PacketGet(*packet, stop_) < 0) {
       break;
     }
     // 视频解码
@@ -107,18 +105,18 @@ int VideoDecodeThread::VideoEntry() {
     } else {
       pts = 0;
     }
-    pts *= av_q2d(player_ctx->video_stream_->time_base);
+    pts *= av_q2d(player_ctx_->video_stream_->time_base);
 
     // frame ready
     if (ret == 0) {
-      ret = sws_scale(player_ctx->sws_ctx_,
+      ret = sws_scale(player_ctx_->sws_ctx_,
                       static_cast<uint8_t const *const *>(p_frame->data),
                       p_frame->linesize, 0, p_codec_ctx->height,
                       p_frame_rgb->data, p_frame_rgb->linesize);
-      pts = SynchronizeVideo(player_ctx, p_frame, pts);
+      pts = SynchronizeVideo(player_ctx_.get(), p_frame, pts);
 
       if (ret == p_codec_ctx->height) {
-        if (QueuePicture(player_ctx, p_frame_rgb, pts) < 0) {
+        if (QueuePicture(p_frame_rgb, pts) < 0) {
           break;
         }
       }
@@ -131,48 +129,48 @@ int VideoDecodeThread::VideoEntry() {
   return 0;
 }
 
-int VideoDecodeThread::QueuePicture(FFmpegPlayerContext *player_ctx,
-                                    AVFrame *p_frame, double pts) {
-  SDL_LockMutex(player_ctx->pict_queue_mutex_);
+auto VideoDecodeThread::QueuePicture(AVFrame *p_frame, double pts) -> int {
+  SDL_LockMutex(player_ctx_->pict_queue_mutex_);
 
   // 等待至有空间给新 picture
-  while (player_ctx->pict_queue_size_ >= static_cast<int>(kVideoPictureQueueSize)) {
-    SDL_CondWaitTimeout(player_ctx->pict_queue_cond_,
-                        player_ctx->pict_queue_mutex_, 500);
+  while (player_ctx_->pict_queue_size_ >=
+         static_cast<int>(kVideoPictureQueueSize)) {
+    SDL_CondWaitTimeout(player_ctx_->pict_queue_cond_,
+                        player_ctx_->pict_queue_mutex_, 500);
 
     if (stop_) {
       break;
     }
   }
-  SDL_UnlockMutex(player_ctx->pict_queue_mutex_);
+  SDL_UnlockMutex(player_ctx_->pict_queue_mutex_);
 
   if (stop_) {
     return 0;
   }
   VideoPicture *video_picture{
-      &player_ctx->picture_queue_[player_ctx->pict_queue_windex_]};
+      &player_ctx_->picture_queue_[player_ctx_->pict_queue_windex_]};
   if (!video_picture->frame_) {
-    SDL_LockMutex(player_ctx->pict_queue_mutex_);
+    SDL_LockMutex(player_ctx_->pict_queue_mutex_);
     video_picture->frame_ = av_frame_alloc();
     // The allocated image buffer has to be freed
     // by using *av_freep(&pointers[0])
     av_image_alloc(video_picture->frame_->data, video_picture->frame_->linesize,
-                   player_ctx->video_codec_ctx_->width,
-                   player_ctx->video_codec_ctx_->height, AV_PIX_FMT_RGB24, 32);
-    SDL_UnlockMutex(player_ctx->pict_queue_mutex_);
+                   player_ctx_->video_codec_ctx_->width,
+                   player_ctx_->video_codec_ctx_->height, AV_PIX_FMT_RGB24, 32);
+    SDL_UnlockMutex(player_ctx_->pict_queue_mutex_);
   }
   std::copy_n(p_frame->data[0],
-              player_ctx->video_codec_ctx_->height * p_frame->linesize[0],
+              player_ctx_->video_codec_ctx_->height * p_frame->linesize[0],
               video_picture->frame_->data[0]);
-  video_picture->pts = pts;
+  video_picture->pts_ = pts;
 
   // 通知显示线程有 picture ready
-  if (++player_ctx->pict_queue_windex_ == kVideoPictureQueueSize) {
-    player_ctx->pict_queue_windex_ = 0;
+  if (++player_ctx_->pict_queue_windex_ == kVideoPictureQueueSize) {
+    player_ctx_->pict_queue_windex_ = 0;
   }
-  SDL_LockMutex(player_ctx->pict_queue_mutex_);
-  player_ctx->pict_queue_size_++;
-  SDL_UnlockMutex(player_ctx->pict_queue_mutex_);
+  SDL_LockMutex(player_ctx_->pict_queue_mutex_);
+  player_ctx_->pict_queue_size_++;
+  SDL_UnlockMutex(player_ctx_->pict_queue_mutex_);
 
   return 0;
 }

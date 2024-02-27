@@ -25,6 +25,10 @@ extern "C" {
 #include <libswscale/swscale.h>
 }
 
+#include "AudioDecodeThread.h"
+#include "AudioPlay.h"
+#include "DemuxThread.h"
+#include "VideoDecodeThread.h"
 #include <SDL.h>
 #include <atomic>
 #include <functional>
@@ -33,28 +37,28 @@ extern "C" {
 
 namespace myffmpegplayer {
 
-size_t const kMaxAudioFrameSize{192000};
+size_t constexpr kMaxAudioFrameSize{192000};
 
-size_t const kVideoPictureQueueSize{1};
+size_t constexpr kVideoPictureQueueSize{1};
 
 // SDL_USEREVENT到 SDL_LASTEVENT用于自定义事件
-int const kFFBaseEvent{SDL_USEREVENT + 100};
-int const kFFRefreshEvent{kFFBaseEvent + 20};
-int const kFFQuitEvent{kFFBaseEvent + 30};
+int constexpr kFFBaseEvent{SDL_USEREVENT + 100};
+int constexpr kFFRefreshEvent{kFFBaseEvent + 20};
+int constexpr kFFQuitEvent{kFFBaseEvent + 30};
 
-size_t const kMaxAudioQSize{5 * 16 * 1024};
-size_t const kMaxVideoQSize{5 * 256 * 1024};
+size_t constexpr kMaxAudioQSize{5 * 16 * 1024};
+size_t constexpr kMaxVideoQSize{5 * 256 * 1024};
 
-float const kAVSyncThreshold{0.01};
-float const kAVNoSyncThreshold{10.0};
+float constexpr kAVSyncThreshold{0.01};
+float constexpr kAVNoSyncThreshold{10.0};
 
-size_t const kSDLAudioBufferSize{1024};
+size_t constexpr kSDLAudioBufferSize{1024};
 
 // typedef void (*Image_Cb)(unsigned char* data, int w, int h, void* userdata)
 
 struct VideoPicture {
   AVFrame *frame_{nullptr};
-  double pts{0.0};
+  double pts_{0.0};
 };
 
 enum class PauseState { UNPAUSE_ = 0, PAUSE_ = 1 };
@@ -63,6 +67,12 @@ using ImageCallback =
     std::function<void(uint8_t *data, int w, int h, void *userdata)>;
 
 struct FFmpegPlayerContext {
+  FFmpegPlayerContext();
+
+  ~FFmpegPlayerContext();
+
+  void Finit();
+
   AVFormatContext *format_ctx_{nullptr};
 
   AVCodecContext *audio_codec_ctx_{nullptr};
@@ -82,12 +92,16 @@ struct FFmpegPlayerContext {
   uint32_t audio_buf_index_{0};
   AVFrame *audio_frame_{nullptr};
   AVPacket *audio_pkt_{nullptr};
-  uint8_t *audio_pkt_data_{nullptr};
+  // uint8_t *audio_pkt_data_{nullptr};
   size_t audio_pkt_size_{0};
 
+  // 视频跳转 flag
   std::atomic<int> seek_req_;
   int seek_flags_;
   int64_t seek_pos_;
+
+  // 音量调整 flag
+  double factor_{1.0};
 
   // Flush flag to set after seeking
   std::atomic<bool> flush_audio_ctx_{false};
@@ -113,49 +127,30 @@ struct FFmpegPlayerContext {
 
   std::atomic<PauseState> pause_{PauseState::UNPAUSE_};
 
+  std::atomic<bool> stopped_{false};
+
   ImageCallback image_callback_;
   void *cb_data_{nullptr};
 
-  void Init() {
-    std::cout << "In FFmpegPlayContext::Init()" << '\n';
-
-    audio_frame_ = av_frame_alloc();
-    audio_pkt_ = av_packet_alloc();
-
-    pict_queue_mutex_ = SDL_CreateMutex();
-    pict_queue_cond_ = SDL_CreateCond();
-  }
-
-  void Finit() {
-    if (audio_frame_) {
-      av_frame_free(&audio_frame_);
-    }
-    if (audio_pkt_) {
-      av_packet_free(&audio_pkt_);
-    }
-    if (pict_queue_mutex_) {
-      SDL_DestroyMutex(pict_queue_mutex_);
-    }
-    if (pict_queue_cond_) {
-      SDL_DestroyCond(pict_queue_cond_);
-    }
-  }
+private:
+  void CleanUp();
 };
-
-class DemuxThread;
-class AudioDecodeThread;
-class VideoDecodeThread;
-class AudioPlay;
 
 class FFmpegPlayer {
 public:
   FFmpegPlayer();
 
+  ~FFmpegPlayer();
+
+  FFmpegPlayer(FFmpegPlayer const &) = delete;
+
+  FFmpegPlayer &operator=(FFmpegPlayer const &) = delete;
+
   void SetFilePath(char const *file_path);
 
   void SetImageCallback(ImageCallback image_callback, void *user_data);
 
-  int InitPlayer();
+  auto InitPlayer() -> int;
 
   void Start();
 
@@ -167,17 +162,21 @@ public:
   void OnKeyEvent(SDL_Event *event);
 
 private:
-  void DoSeekOnKeyEvent(double incr, double &pos);
+  void DoSeekOnKeyEvent(double incr);
 
-  FFmpegPlayerContext player_ctx_;
+  void DoVolumeAdjustOnKeyEvent(double factor);
+
+  void CleanUp();
+
+  std::shared_ptr<FFmpegPlayerContext> player_ctx_;
   std::string file_path_;
   SDL_AudioSpec audio_desired_spec_;
   std::atomic<bool> stop_{false};
 
-  DemuxThread *demux_thread_{nullptr};
-  AudioDecodeThread *audio_decode_thread_{nullptr};
-  VideoDecodeThread *video_decode_thread_{nullptr};
-  AudioPlay *audio_play_{nullptr};
+  DemuxThread demux_thread_;
+  AudioDecodeThread audio_decode_thread_;
+  VideoDecodeThread video_decode_thread_;
+  AudioPlay audio_play_;
 };
 
 } // namespace myffmpegplayer

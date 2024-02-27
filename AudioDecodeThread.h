@@ -3,6 +3,7 @@
 
 #include "ThreadBase.h"
 #include <_types/_uint8_t.h>
+#include <memory>
 
 namespace myffmpegplayer {
 
@@ -10,18 +11,21 @@ struct FFmpegPlayerContext;
 
 class AudioDecodeThread : public ThreadBase {
 public:
-  AudioDecodeThread();
+  explicit AudioDecodeThread(std::shared_ptr<FFmpegPlayerContext> player_ctx);
 
-  void SetPlayerCtx(FFmpegPlayerContext *player_ctx);
+  ~AudioDecodeThread() = default;
+
+  // void SetPlayerCtx(FFmpegPlayerContext *player_ctx);
 
   void GetAudioData(uint8_t *stream, int len);
 
   void Run() override;
 
 private:
-  int AudioDecodeFrame(FFmpegPlayerContext *player_ctx, double *pts_ptr);
+  auto AudioDecodeFrame(double *pts_ptr) -> int;
 
-  FFmpegPlayerContext *player_ctx_{nullptr};
+  // FFmpegPlayerContext *player_ctx_;
+  std::shared_ptr<FFmpegPlayerContext> player_ctx_;
 };
 
 } // namespace myffmpegplayer

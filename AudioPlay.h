@@ -10,11 +10,14 @@ class AudioPlay {
 public:
   AudioPlay() = default;
 
-  int OpenDevice(SDL_AudioSpec const *spec);
+  ~AudioPlay();
+
+  AudioPlay(AudioPlay const &) = delete;
+  AudioPlay &operator=(AudioPlay const &) = delete;
+
+  auto OpenDevice(SDL_AudioSpec const *spec) -> int;
 
   void Start();
-
-  void Stop();
 
 private:
   SDL_AudioDeviceID dev_id_{0};

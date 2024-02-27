@@ -1,9 +1,11 @@
+#include <_types/_uint8_t.h>
+#include <functional>
+#include <memory>
+
 #include "FFmpegPlayer.h"
 #include "RenderView.h"
 #include "SDLApp.h"
 #include "Timer.h"
-#include <_types/_uint8_t.h>
-#include <functional>
 
 struct RenderPairData {
   myffmpegplayer::RenderItem *item{nullptr};
@@ -31,31 +33,22 @@ int main(int argc, char **argv) {
   view.InitSDL();
 
   myffmpegplayer::Timer timer;
-  // 大坑
-  // 为什么用 auto推导类型时 on_refresh_callback_test这里stack buffer overflow
-  auto on_refresh_callback_test =
-      std::bind(&myffmpegplayer::RenderView::OnRefresh, &view);
-  std::cout << "on_refresh_callback_test type: "
-            << typeid(on_refresh_callback_test).name() << '\n';
 
-  auto on_refresh = [&view]() { view.OnRefresh(); };
-
-  std::function<void()> on_refresh_callback =
-      std::bind(&myffmpegplayer::RenderView::OnRefresh, &view);
+  std::function<void()> on_refresh_callback = [&view]() { view.OnRefresh(); };
   timer.Start(&on_refresh_callback, 30);
 
-  RenderPairData *cb_data{new RenderPairData};
+  std::unique_ptr<RenderPairData> cb_data = std::make_unique<RenderPairData>();
   cb_data->view = &view;
 
   myffmpegplayer::FFmpegPlayer player;
   player.SetFilePath(argv[1]);
-  player.SetImageCallback(FNDecodeImageCallback, cb_data);
+  player.SetImageCallback(FNDecodeImageCallback, cb_data.get());
 
   if (player.InitPlayer() != 0) {
-    std::cerr << "InitPlayer Failed!" << '\n';
+    // std::cerr << "InitPlayer Failed!" << '\n';
     return -1;
   }
-  std::cout << "FFmpegPlayer initialization successed." << '\n';
+  // std::cout << "FFmpegPlayer initialization successed." << '\n';
 
   player.Start();
 

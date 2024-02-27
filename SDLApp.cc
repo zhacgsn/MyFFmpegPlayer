@@ -21,7 +21,7 @@ SDLApp::SDLApp() {
   }
 }
 
-int SDLApp::Exec() {
+auto SDLApp::Exec() -> int {
   SDL_Event event;
 
   while (true) {
@@ -57,6 +57,6 @@ void SDLApp::RegisterEvent(int type,
   user_events_[type] = cb;
 }
 
-SDLApp *SDLApp::Instance() { return GlobalInstance; }
+auto SDLApp::Instance() -> SDLApp * { return GlobalInstance; }
 
 } // namespace myffmpegplayer

@@ -1,26 +1,28 @@
 #ifndef MYFFMPEGPLAYER_VIDEODECODETHREAD_H
 #define MYFFMPEGPLAYER_VIDEODECODETHREAD_H
 
-#include "FFmpegPlayer.h"
+extern "C" {
+#include "libavutil/frame.h"
+}
 #include "ThreadBase.h"
 
 namespace myffmpegplayer {
 
+struct FFmpegPlayerContext;
 class VideoDecodeThread : public ThreadBase {
 public:
-  VideoDecodeThread();
+  explicit VideoDecodeThread(std::shared_ptr<FFmpegPlayerContext> player_ctx);
 
-  void SetPlayerCtx(FFmpegPlayerContext *player_ctx);
+  ~VideoDecodeThread() = default;
 
-  void Run();
+  void Run() override;
 
 private:
-  int VideoEntry();
+  auto VideoEntry() -> int;
 
-  int QueuePicture(FFmpegPlayerContext *player_ctx, AVFrame *p_frame,
-                   double pts);
+  auto QueuePicture(AVFrame *p_frame, double pts) -> int;
 
-  FFmpegPlayerContext *player_ctx_{nullptr};
+  std::shared_ptr<FFmpegPlayerContext> player_ctx_;
 };
 
 } // namespace myffmpegplayer

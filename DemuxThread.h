@@ -1,31 +1,31 @@
 #ifndef MYFFMPEGPLAYER_DEMUXTHREAD_H
 #define MYFFMPEGPLAYER_DEMUXTHREAD_H
 
-#include "FFmpegPlayer.h"
 #include "ThreadBase.h"
 
 namespace myffmpegplayer {
 
+struct FFmpegPlayerContext;
 class DemuxThread : public ThreadBase {
 public:
-  DemuxThread();
+  explicit DemuxThread(std::shared_ptr<FFmpegPlayerContext> player_ctx);
 
-  void SetPlayerCtx(FFmpegPlayerContext *player_ctx);
+  ~DemuxThread() = default;
 
-  int InitDemuxThread();
+  auto InitDemuxThread() -> int;
 
   void FinitDemuxThread();
 
   void Run();
 
 private:
-  int DecodeLoop();
+  auto DecodeLoop() -> int;
 
-  int AudioDecodeFrame(FFmpegPlayerContext *player_ctx, double *pts_ptr);
+  auto AudioDecodeFrame(double *pts_ptr) -> int;
 
-  int StreamOpen(FFmpegPlayerContext *player_ctx, int media_type);
+  auto StreamOpen(int media_type) -> int;
 
-  FFmpegPlayerContext *player_ctx_{nullptr};
+  std::shared_ptr<FFmpegPlayerContext> player_ctx_;
 };
 
 } // namespace myffmpegplayer

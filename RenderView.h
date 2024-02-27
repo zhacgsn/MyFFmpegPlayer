@@ -21,7 +21,7 @@ public:
 
   void InitSDL();
 
-  RenderItem *CreateRGB24Texture(int width, int height);
+  auto CreateRGB24Texture(int width, int height) -> RenderItem *;
 
   void UpdateTexture(RenderItem *item, unsigned char *pixel_data, int rows);
 
@@ -35,5 +35,5 @@ private:
   std::mutex update_mutex_;
 };
 
-} // namespace MyFFmpegPlayer
+} // namespace myffmpegplayer
 #endif

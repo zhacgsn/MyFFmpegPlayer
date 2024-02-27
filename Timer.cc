@@ -4,7 +4,7 @@
 
 namespace myffmpegplayer {
 
-static uint32_t TimerCallback(uint32_t interval, void *param) {
+static auto TimerCallback(uint32_t interval, void *param) -> uint32_t {
   // std::cout << "In CallbackFunc" << '\n';
   SDL_Event event;
   SDL_UserEvent user_event;
@@ -20,7 +20,7 @@ static uint32_t TimerCallback(uint32_t interval, void *param) {
 
   SDL_PushEvent(&event);
 
-  // 定时器继续
+  // interval为 0时为一次性定时器
   return interval;
 }
 

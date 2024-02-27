@@ -1,36 +1,38 @@
 #ifndef MYFFMPEGPLAYER_PACKETQUEUE_H
 #define MYFFMPEGPLAYER_PACKETQUEUE_H
 
-#include "SDL_mutex.h"
-#include <SDL.h>
 #include <atomic>
+#include <condition_variable>
 #include <list>
+#include <mutex>
 
 extern "C" {
 #include "libavcodec/packet.h"
-#include <libavcodec/avcodec.h>
 }
 
 namespace myffmpegplayer {
 
 class PacketQueue {
 public:
-  PacketQueue();
+  PacketQueue() = default;
 
-  void PacketPut(AVPacket *pkt);
+  PacketQueue(PacketQueue const &) = delete;
+  PacketQueue &operator=(PacketQueue const &) = delete;
 
-  int PacketGet(AVPacket *pkt, std::atomic<bool> &quit);
+  void PacketPut(AVPacket const &pkt);
+
+  auto PacketGet(AVPacket &pkt, std::atomic<bool> &quit) -> int;
 
   void PacketFlush();
 
-  int PacketSize() const;
+  auto PacketSize() -> int const;
 
 private:
   std::list<AVPacket> pkts_;
   // 所有 AVPacket size之和
   std::atomic<int> size_{0};
-  SDL_mutex *mutex_;
-  SDL_cond *cond_;
+  std::mutex mutex_;
+  std::condition_variable cond_;
 };
 
 } // namespace myffmpegplayer

@@ -1,7 +1,10 @@
 #include "DemuxThread.h"
+
 #include "FFmpegPlayer.h"
 #include "SDL_events.h"
 #include "SDL_timer.h"
+
+extern "C" {
 #include "libavcodec/avcodec.h"
 #include "libavcodec/packet.h"
 #include "libavformat/avformat.h"
@@ -14,22 +17,16 @@
 #include "libavutil/time.h"
 #include "libswresample/swresample.h"
 #include "libswscale/swscale.h"
-
+}
 #include <iostream>
 #include <sys/_types/_int64_t.h>
 
 namespace myffmpegplayer {
 
-DemuxThread::DemuxThread() {
-  std::cout << "In DemuxThread constructor" << '\n';
-}
+DemuxThread::DemuxThread(std::shared_ptr<FFmpegPlayerContext> player_ctx)
+    : player_ctx_(player_ctx) {}
 
-void DemuxThread::SetPlayerCtx(FFmpegPlayerContext *player_ctx) {
-  player_ctx_ = player_ctx;
-}
-
-int DemuxThread::InitDemuxThread() {
-  std::cout << "In InitDemuxThread" << '\n';
+auto DemuxThread::InitDemuxThread() -> int {
   AVFormatContext *fmt_ctx{nullptr};
 
   int ret = avformat_open_input(&fmt_ctx, player_ctx_->filename_.c_str(),
@@ -50,11 +47,11 @@ int DemuxThread::InitDemuxThread() {
   }
   av_dump_format(fmt_ctx, 0, player_ctx_->filename_.c_str(), 0);
 
-  if (StreamOpen(player_ctx_, AVMEDIA_TYPE_AUDIO) < 0) {
+  if (StreamOpen(AVMEDIA_TYPE_AUDIO) < 0) {
     std::cerr << "Open audio stream failed!" << '\n';
     return -1;
   }
-  if (StreamOpen(player_ctx_, AVMEDIA_TYPE_VIDEO) < 0) {
+  if (StreamOpen(AVMEDIA_TYPE_VIDEO) < 0) {
     std::cerr << "Open video stream failed!" << '\n';
     return -1;
   }
@@ -62,7 +59,7 @@ int DemuxThread::InitDemuxThread() {
 }
 
 void DemuxThread::FinitDemuxThread() {
-  std::cout << "In FinitDemuxThread" << '\n';
+  // std::cout << "In FinitDemuxThread" << '\n';
 
   if (player_ctx_->format_ctx_) {
     avformat_close_input(&(player_ctx_->format_ctx_));
@@ -88,13 +85,13 @@ void DemuxThread::FinitDemuxThread() {
 
 void DemuxThread::Run() { DecodeLoop(); }
 
-int DemuxThread::DecodeLoop() {
+auto DemuxThread::DecodeLoop() -> int {
   AVPacket *packet{av_packet_alloc()};
 
   // 持续读取帧数据
   while (true) {
     if (stop_) {
-      std::cout << "Request quit in DecodeLoop!" << '\n';
+      // std::cout << "Request quit in DecodeLoop!" << '\n';
       break;
     }
 
@@ -153,9 +150,9 @@ int DemuxThread::DecodeLoop() {
 
     // 判断 packet是视频帧还是音频帧，放入对应 PacketQueue队列
     if (packet->stream_index == player_ctx_->video_stream_index_) {
-      player_ctx_->video_queue_.PacketPut(packet);
+      player_ctx_->video_queue_.PacketPut(*packet);
     } else if (packet->stream_index == player_ctx_->audio_stream_index_) {
-      player_ctx_->audio_queue_.PacketPut(packet);
+      player_ctx_->audio_queue_.PacketPut(*packet);
     } else {
       // TODO: 除了音视频还可能有其他 packet如字幕...
       av_packet_unref(packet);
@@ -169,14 +166,14 @@ int DemuxThread::DecodeLoop() {
 
   SDL_Event event;
   event.type = kFFQuitEvent;
-  event.user.data1 = player_ctx_;
+  event.user.data1 = player_ctx_.get();
   SDL_PushEvent(&event);
 
   return 0;
 }
 
-int DemuxThread::StreamOpen(FFmpegPlayerContext *player_ctx, int media_type) {
-  AVFormatContext *fmt_ctx{player_ctx->format_ctx_};
+auto DemuxThread::StreamOpen(int media_type) -> int {
+  AVFormatContext *fmt_ctx = player_ctx_->format_ctx_;
   AVCodec *codec{nullptr};
 
   // 找到 best stream并且返回对应 decoder
@@ -186,7 +183,7 @@ int DemuxThread::StreamOpen(FFmpegPlayerContext *player_ctx, int media_type) {
 
   if (stream_index < 0 ||
       stream_index >= static_cast<int>(fmt_ctx->nb_streams)) {
-    std::cout << "Cannot find an audio stream in the input file" << '\n';
+    // std::cout << "Cannot find an audio stream in the input file" << '\n';
     return -1;
   }
 
@@ -204,37 +201,37 @@ int DemuxThread::StreamOpen(FFmpegPlayerContext *player_ctx, int media_type) {
 
   switch (codec_ctx->codec_type) {
   case AVMEDIA_TYPE_AUDIO: {
-    player_ctx->audio_stream_index_ = stream_index;
-    player_ctx->audio_codec_ctx_ = codec_ctx;
-    player_ctx->audio_stream_ = fmt_ctx->streams[stream_index];
+    player_ctx_->audio_stream_index_ = stream_index;
+    player_ctx_->audio_codec_ctx_ = codec_ctx;
+    player_ctx_->audio_stream_ = fmt_ctx->streams[stream_index];
     // 通过 swr context处理音频重采样
-    player_ctx->swr_ctx_ = swr_alloc();
+    player_ctx_->swr_ctx_ = swr_alloc();
 
-    av_opt_set_chlayout(player_ctx->swr_ctx_, "in_chlayout",
+    av_opt_set_chlayout(player_ctx_->swr_ctx_, "in_chlayout",
                         &(codec_ctx->ch_layout), 0);
-    av_opt_set_int(player_ctx->swr_ctx_, "in_sample_rate",
+    av_opt_set_int(player_ctx_->swr_ctx_, "in_sample_rate",
                    codec_ctx->sample_rate, 0);
-    av_opt_set_sample_fmt(player_ctx->swr_ctx_, "in_sample_fmt",
+    av_opt_set_sample_fmt(player_ctx_->swr_ctx_, "in_sample_fmt",
                           codec_ctx->sample_fmt, 0);
 
     AVChannelLayout out_layout;
     // use stereo
     av_channel_layout_default(&out_layout, 2);
 
-    av_opt_set_chlayout(player_ctx->swr_ctx_, "out_chlayout", &out_layout, 0);
-    av_opt_set_int(player_ctx->swr_ctx_, "out_sample_rate", 48000, 0);
-    av_opt_set_sample_fmt(player_ctx->swr_ctx_, "out_sample_fmt",
+    av_opt_set_chlayout(player_ctx_->swr_ctx_, "out_chlayout", &out_layout, 0);
+    av_opt_set_int(player_ctx_->swr_ctx_, "out_sample_rate", 48000, 0);
+    av_opt_set_sample_fmt(player_ctx_->swr_ctx_, "out_sample_fmt",
                           AV_SAMPLE_FMT_S16, 0);
-    swr_init(player_ctx->swr_ctx_);
+    swr_init(player_ctx_->swr_ctx_);
   } break;
   case AVMEDIA_TYPE_VIDEO: {
-    player_ctx->video_stream_index_ = stream_index;
-    player_ctx->video_codec_ctx_ = codec_ctx;
-    player_ctx->video_stream_ = fmt_ctx->streams[stream_index];
-    player_ctx->frame_timer_ = static_cast<double>(av_gettime()) / 1000000.0;
-    player_ctx->frame_last_delay_ = 40e-3;
+    player_ctx_->video_stream_index_ = stream_index;
+    player_ctx_->video_codec_ctx_ = codec_ctx;
+    player_ctx_->video_stream_ = fmt_ctx->streams[stream_index];
+    player_ctx_->frame_timer_ = static_cast<double>(av_gettime()) / 1000000.0;
+    player_ctx_->frame_last_delay_ = 40e-3;
     // 通过 sws context处理视频图像缩放和颜色空间转换
-    player_ctx->sws_ctx_ =
+    player_ctx_->sws_ctx_ =
         sws_getContext(codec_ctx->width, codec_ctx->height, codec_ctx->pix_fmt,
                        codec_ctx->width, codec_ctx->height, AV_PIX_FMT_RGB24,
                        SWS_BILINEAR, nullptr, nullptr, nullptr);

@@ -8,7 +8,7 @@
 
 namespace myffmpegplayer {
 
-int const kSDLAppEventTimeout{1};
+int constexpr kSDLAppEventTimeout{1};
 
 // #define SDLAppInstance (SDLApp::Instance());
 
@@ -16,13 +16,13 @@ class SDLApp {
 public:
   SDLApp();
 
-  int Exec();
+  auto Exec() -> int;
 
   void Quit();
 
   void RegisterEvent(int type, std::function<void(SDL_Event *)> const &cb);
 
-  static SDLApp *Instance();
+  static auto Instance() -> SDLApp *;
 
 private:
   std::map<int, std::function<void(SDL_Event *)>> user_events_;

@@ -11,11 +11,11 @@
 
 namespace myffmpegplayer {
 
-int const kSDLWindowDefaultWidth{1280};
-int const kSDLWindowDefaultHeight{720};
+int constexpr kSDLWindowDefaultWidth{1280};
+int constexpr kSDLWindowDefaultHeight{720};
 
-static SDL_Rect MakeRect(int x, int y, int w, int h) {
-  std::cout << "In MakeRecr" << '\n';
+static auto MakeRect(int x, int y, int w, int h) -> SDL_Rect {
+  // std::cout << "In MakeRecr" << '\n';
 
   SDL_Rect rect;
   rect.x = x;
@@ -23,8 +23,8 @@ static SDL_Rect MakeRect(int x, int y, int w, int h) {
   rect.w = w;
   rect.h = h;
 
-  std::cout << "rect.x: " << rect.x << " rect.y: " << rect.y
-            << " rect.w: " << rect.w << " rect.h: " << rect.h << '\n';
+  // std::cout << "rect.x: " << rect.x << " rect.y: " << rect.y
+            // << " rect.w: " << rect.w << " rect.h: " << rect.h << '\n';
 
   return rect;
 }
@@ -43,7 +43,7 @@ void RenderView::InitSDL() {
     std::cerr << "!sdl_window in " << __FUNCTION__ << '\n';
     throw std::runtime_error("!RenderView::sdl_window_");
   }
-  sdl_renderer_ = SDL_CreateRenderer(sdl_window_, -1, SDL_RENDERER_ACCELERATED);
+  sdl_renderer_ = SDL_CreateRenderer(sdl_window_, -1, SDL_RENDERER_SOFTWARE);
 
   if (!sdl_renderer_) {
     std::cerr << "!sdl_renderer_ in " << __FUNCTION__ << '\n';
@@ -55,7 +55,7 @@ void RenderView::InitSDL() {
   SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
 }
 
-RenderItem *RenderView::CreateRGB24Texture(int width, int height) {
+auto RenderView::CreateRGB24Texture(int width, int height) -> RenderItem * {
   std::scoped_lock<std::mutex> mutex{update_mutex_};
 
   RenderItem *ret{new RenderItem};
